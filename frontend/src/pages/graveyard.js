@@ -1,8 +1,17 @@
 // Personal graveyard — create monuments, filter the showcase, maintain, witness extinction.
 
 import { createMonumentCard, playCollapse } from "../monument-card.js";
+import { SAMPLE_IMAGES, SAMPLE_IMAGE_KEYS } from "../sample-images.js";
 
 const PAGE_SIZE = 36;
+
+const IMAGE_LABELS = {
+  sunset: "海与日落",
+  room: "空房间",
+  portrait: "一张脸",
+  screenshot: "聊天截图",
+  map: "地图上的点",
+};
 
 export async function renderGraveyard(container, ctx) {
   const { api, startPolling } = ctx;
@@ -31,6 +40,7 @@ export async function renderGraveyard(container, ctx) {
         <select id="m-type">
           <option value="relic">遗物碑 · Relic</option>
           <option value="code">代码碑 · Code</option>
+          <option value="image">图片碑 · Image</option>
           <option value="link">链接碑 · Link</option>
           <option value="nameless">无名碑 · Nameless</option>
         </select>
@@ -44,6 +54,18 @@ export async function renderGraveyard(container, ctx) {
           <input type="checkbox" id="m-public" /> 公开立于无名墓区
         </label>
       </div>
+      <div id="image-picker" class="image-picker" hidden>
+        <span class="ip-hint">选一张要埋葬的影像（示例）：</span>
+        <div class="ip-thumbs">
+          ${SAMPLE_IMAGE_KEYS.map(
+            (k, i) =>
+              `<button type="button" class="ip-thumb${i === 0 ? " on" : ""}" data-key="${k}" title="${IMAGE_LABELS[k]}">
+                 <img src="${SAMPLE_IMAGES[k]}" alt="${IMAGE_LABELS[k]}" />
+                 <span>${IMAGE_LABELS[k]}</span>
+               </button>`,
+          ).join("")}
+        </div>
+      </div>
       <textarea id="m-content" placeholder="写下要埋葬的东西……（无名碑可留空）"></textarea>
       <button id="m-create" class="cta-small">立碑 · Erect</button>
     </div>
@@ -53,8 +75,8 @@ export async function renderGraveyard(container, ctx) {
       <div class="showcase-filters">
         <select id="filter-type" aria-label="按类型筛选">
           <option value="all">全部类型</option><option value="code">代码碑</option>
-          <option value="relic">遗物碑</option><option value="link">链接碑</option>
-          <option value="nameless">无名碑</option>
+          <option value="relic">遗物碑</option><option value="image">图片碑</option>
+          <option value="link">链接碑</option><option value="nameless">无名碑</option>
         </select>
         <select id="filter-stage" aria-label="按阶段筛选">
           <option value="all">全部阶段</option><option value="1">崭新期</option>
@@ -82,24 +104,47 @@ export async function renderGraveyard(container, ctx) {
   const loadMore = container.querySelector("#load-more");
   const typeSel = container.querySelector("#m-type");
   const contentEl = container.querySelector("#m-content");
+  const styleSel = container.querySelector("#m-style");
+  const imagePicker = container.querySelector("#image-picker");
+  let selectedImageKey = SAMPLE_IMAGE_KEYS[0];
+
+  // Image thumbnail selection
+  for (const thumb of imagePicker.querySelectorAll(".ip-thumb")) {
+    thumb.onclick = () => {
+      selectedImageKey = thumb.dataset.key;
+      for (const t of imagePicker.querySelectorAll(".ip-thumb")) t.classList.remove("on");
+      thumb.classList.add("on");
+    };
+  }
 
   typeSel.onchange = () => {
-    contentEl.disabled = typeSel.value === "nameless";
+    const t = typeSel.value;
+    const isImage = t === "image";
+    imagePicker.hidden = !isImage;
+    styleSel.disabled = isImage; // image monuments are always canvas
+    contentEl.disabled = t === "nameless" || isImage;
     contentEl.placeholder =
-      typeSel.value === "nameless"
+      t === "nameless"
         ? "无名碑无需内容——只留一块空碑。"
-        : typeSel.value === "link"
-          ? "粘贴一个已经死掉的链接……"
-          : "写下要埋葬的东西……";
+        : isImage
+          ? "图片碑无需文字——它会作为影像慢慢风化。"
+          : t === "link"
+            ? "粘贴一个已经死掉的链接……"
+            : "写下要埋葬的东西……";
   };
 
   container.querySelector("#m-create").onclick = async () => {
+    const type = typeSel.value;
     const payload = {
-      type: typeSel.value,
-      visual_style: container.querySelector("#m-style").value,
+      type,
+      visual_style: styleSel.value,
       is_public: container.querySelector("#m-public").checked,
       content: contentEl.disabled ? null : contentEl.value || null,
     };
+    if (type === "image") {
+      payload.image_key = selectedImageKey;
+      payload.image_src = SAMPLE_IMAGES[selectedImageKey];
+    }
     try {
       await api.createMonument(payload);
       contentEl.value = "";
@@ -136,7 +181,7 @@ export async function renderGraveyard(container, ctx) {
   const reset = container.querySelector("#reset-showcase");
   if (reset) {
     reset.onclick = async () => {
-      if (!confirm("这会清除本浏览器新增的碑和维护记录，并恢复 120 条初始演示数据。继续吗？")) return;
+      if (!confirm("这会清除本浏览器新增的碑和维护记录，并恢复初始演示数据。继续吗？")) return;
       await api.resetShowcase();
       visibleCount = PAGE_SIZE;
       await refresh();

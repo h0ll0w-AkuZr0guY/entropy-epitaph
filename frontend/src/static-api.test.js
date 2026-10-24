@@ -32,16 +32,40 @@ function harness() {
   };
 }
 
+const TOTAL = fixture.monuments.length;
+const PUBLIC = fixture.monuments.filter((m) => m.is_public).length;
+
 describe("static GitHub Pages API", () => {
-  it("loads all 120 balanced showcase monuments", async () => {
+  it("loads the full balanced showcase including image monuments", async () => {
     const { api } = harness();
     const monuments = await api.myMonuments();
-    expect(monuments).toHaveLength(120);
-    expect(new Set(monuments.map((item) => item.type))).toEqual(new Set(["code", "relic", "link", "nameless"]));
-    expect(new Set(monuments.map((item) => item.visual_style))).toEqual(new Set(["css", "canvas", "ascii"]));
+    expect(monuments).toHaveLength(TOTAL);
+    expect(new Set(monuments.map((item) => item.type))).toEqual(
+      new Set(["code", "relic", "image", "link", "nameless"]),
+    );
     expect(new Set(monuments.map((item) => item.decay_stage))).toEqual(new Set([1, 2, 3, 4, 5]));
-    expect((await api.publicMonuments()).length).toBe(75);
+    // Image monuments carry an inline image source and no text content.
+    const images = monuments.filter((item) => item.type === "image");
+    expect(images.length).toBeGreaterThanOrEqual(5);
+    expect(images.every((item) => typeof item.image_src === "string" && item.image_src.startsWith("data:image/svg"))).toBe(true);
+    expect((await api.publicMonuments()).length).toBe(PUBLIC);
     expect((await api.archive()).length).toBeGreaterThan(0);
+  });
+
+  it("creates an image monument on canvas from a sample picture", async () => {
+    const { api } = harness();
+    const created = await api.createMonument({
+      type: "image",
+      image_key: "sunset",
+      image_src: "data:image/svg+xml;utf8,<svg/>",
+      is_public: true,
+    });
+    expect(created.type).toBe("image");
+    expect(created.visual_style).toBe("canvas");
+    expect(created.image_src).toContain("data:image/svg");
+    const pub = await api.publicMonuments();
+    const found = pub.find((item) => item.id === created.id);
+    expect(found.image_src).toContain("data:image/svg");
   });
 
   it("creates and persists a browser-local monument", async () => {
@@ -53,7 +77,7 @@ describe("static GitHub Pages API", () => {
       is_public: true,
     });
     expect(created.visual_style).toBe("ascii");
-    expect(await h.api.myMonuments()).toHaveLength(121);
+    expect(await h.api.myMonuments()).toHaveLength(TOTAL + 1);
 
     const nextApi = createStaticApi({
       fixtureUrl: "fixture.json",
@@ -61,9 +85,9 @@ describe("static GitHub Pages API", () => {
       storage: h.storage,
       clock: h.clock,
     });
-    expect(await nextApi.myMonuments()).toHaveLength(121);
+    expect(await nextApi.myMonuments()).toHaveLength(TOTAL + 1);
     await nextApi.resetShowcase();
-    expect(await nextApi.myMonuments()).toHaveLength(120);
+    expect(await nextApi.myMonuments()).toHaveLength(TOTAL);
   });
 
   it("allows one maintenance action per UTC day", async () => {

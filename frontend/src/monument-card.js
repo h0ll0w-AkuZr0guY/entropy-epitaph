@@ -4,6 +4,7 @@ import {
   renderASCII,
   renderCSS,
   renderCanvas,
+  renderImage,
   STAGE_NAMES,
   STAGE_NAMES_EN,
 } from "./decay-renderer.js";
@@ -11,6 +12,7 @@ import {
 const TYPE_LABELS = {
   code: "代码碑 · Code",
   relic: "遗物碑 · Relic",
+  image: "图片碑 · Image",
   link: "链接碑 · Link",
   nameless: "无名碑 · Nameless",
 };
@@ -21,6 +23,7 @@ export function createMonumentCard(m, options = {}) {
   const card = document.createElement("div");
   card.className = `monument-card style-${m.visual_style} stage-${m.decay_stage}`;
   card.dataset.id = m.id;
+  card.dataset.type = m.type;
 
   const tilt = m.tilt_angle || 0;
   const sink = (m.decay_stage - 1) * 6; // sink into "dust" as it decays
@@ -54,7 +57,16 @@ export function createMonumentCard(m, options = {}) {
       ? m.whisper || "……"
       : m.current_content || m.original_content || m.epitaph || "";
 
-  if (m.visual_style === "canvas") {
+  if (m.type === "image" && m.image_src) {
+    // Image monuments are always rendered on canvas — the picture is the medium.
+    const canvas = document.createElement("canvas");
+    canvas.width = 260;
+    canvas.height = 150;
+    canvas.className = "mc-canvas mc-image";
+    body.appendChild(canvas);
+    renderImage(canvas, m.image_src, m.entropy_score, m.random_seed);
+    card._canvasRefresh = () => renderImage(canvas, m.image_src, m.entropy_score, m.random_seed);
+  } else if (m.visual_style === "canvas") {
     const canvas = document.createElement("canvas");
     canvas.width = 260;
     canvas.height = 120;
@@ -98,8 +110,18 @@ export function createMonumentCard(m, options = {}) {
     btn.textContent = "凭吊";
     btn.onclick = async () => {
       btn.disabled = true;
-      await onCondole(m.id);
-      btn.remove(); // no feedback — a kindness with no reward
+      try {
+        await onCondole(m.id);
+      } catch (_) {
+        btn.disabled = false;
+        return;
+      }
+      // A small, quiet confirmation: the stone briefly grows clearer.
+      // No numbers, no thanks — just the feeling that your gesture landed.
+      playCondoleRelief(card, m);
+      btn.textContent = "已凭吊";
+      btn.classList.add("done");
+      setTimeout(() => btn.remove(), 1600);
     };
     footer.appendChild(btn);
   } else if (!publicMode && onMaintain) {
@@ -112,6 +134,55 @@ export function createMonumentCard(m, options = {}) {
 
   card.appendChild(footer);
   return card;
+}
+
+// Condolence feedback: the stone briefly clears, then settles back —
+// a quiet, rewardless confirmation that the gesture delayed the decay.
+function playCondoleRelief(card, m) {
+  card.classList.add("condoled");
+
+  // Soft radial pulse over the card — a visible "it got a little clearer".
+  const ripple = document.createElement("div");
+  ripple.className = "condole-ripple";
+  card.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 1500);
+
+  const body = card.querySelector(".mc-body");
+  const canvas = body && body.querySelector("canvas");
+  const textEl = body && body.querySelector(".mc-text");
+
+  const baseEntropy = m.entropy_score;
+  const relieved = Math.max(0, baseEntropy - 0.18);
+  const start = performance.now();
+  const DURATION = 1400;
+
+  function frame(now) {
+    const t = Math.min(1, (now - start) / DURATION);
+    // Ease out then ease back: clear quickly, fade back toward the true value.
+    const dip = Math.sin(t * Math.PI); // 0 → 1 → 0
+    const shown = baseEntropy - (baseEntropy - relieved) * dip;
+
+    if (canvas) {
+      if (m.type === "image" && m.image_src) {
+        renderImage(canvas, m.image_src, shown, m.random_seed);
+      } else {
+        renderCanvas(canvas, m.current_content || m.epitaph || "", shown, m.random_seed);
+      }
+    } else if (textEl) {
+      if (m.visual_style === "ascii") {
+        renderASCII(textEl, m.current_content || m.epitaph || m.whisper || "", shown, m.random_seed);
+      } else {
+        renderCSS(textEl, shown);
+      }
+    }
+
+    if (t < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      card.classList.remove("condoled");
+    }
+  }
+  requestAnimationFrame(frame);
 }
 
 // Particle collapse animation when a monument reaches extinction.

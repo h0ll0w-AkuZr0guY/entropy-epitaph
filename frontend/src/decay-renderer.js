@@ -97,6 +97,94 @@ export function renderCanvas(canvas, text, entropy, seed) {
   }
 }
 
+// ---------- Image style ----------
+// Image monuments decay as a medium: progressive pixelation, desaturation,
+// channel noise, and fade. Mirrors how a photograph rots — not just blurs.
+const _imageCache = new Map();
+
+function loadImage(src) {
+  if (_imageCache.has(src)) return _imageCache.get(src);
+  const img = new Image();
+  const promise = new Promise((resolve) => {
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+  });
+  img.src = src;
+  const entry = { img, promise, ready: false };
+  promise.then(() => { entry.ready = true; });
+  _imageCache.set(src, entry);
+  return entry;
+}
+
+export function renderImage(canvas, src, entropy, seed) {
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width;
+  const H = canvas.height;
+
+  function paint(img) {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = "#151310";
+    ctx.fillRect(0, 0, W, H);
+    if (!img) return;
+
+    // Pixelation grows with entropy: draw small, scale up blocky.
+    const scale = 1 + Math.floor(entropy * 14);
+    const ow = Math.max(1, Math.floor(W / scale));
+    const oh = Math.max(1, Math.floor(H / scale));
+    const off = document.createElement("canvas");
+    off.width = ow;
+    off.height = oh;
+    const octx = off.getContext("2d");
+    octx.drawImage(img, 0, 0, ow, oh);
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = 1 - entropy * 0.55; // fade toward the void
+    ctx.drawImage(off, 0, 0, ow, oh, 0, 0, W, H);
+    ctx.globalAlpha = 1;
+
+    // Desaturate + inject channel noise as decay advances.
+    if (entropy > 0.02) {
+      const frame = ctx.getImageData(0, 0, W, H);
+      const data = frame.data;
+      const rand = seededRandom((seed || 1) + Math.floor(Date.now() / 500));
+      const desat = entropy * 0.85;
+      for (let i = 0; i < data.length; i += 4) {
+        const gray = 0.3 * data[i] + 0.59 * data[i + 1] + 0.11 * data[i + 2];
+        data[i] = data[i] * (1 - desat) + gray * desat;
+        data[i + 1] = data[i + 1] * (1 - desat) + gray * desat;
+        data[i + 2] = data[i + 2] * (1 - desat) + gray * desat;
+        if (rand() < entropy * 0.35) {
+          const v = Math.floor(rand() * 255);
+          data[i] = data[i + 1] = data[i + 2] = v;
+        }
+      }
+      ctx.putImageData(frame, 0, 0);
+    }
+
+    // Scanline / crack overlay at heavy decay.
+    if (entropy > 0.55) {
+      ctx.strokeStyle = `rgba(20,18,16,${(entropy - 0.5) * 0.9})`;
+      ctx.lineWidth = 1;
+      const rand = seededRandom((seed || 7) * 13);
+      const cracks = Math.floor(entropy * 6);
+      for (let c = 0; c < cracks; c++) {
+        ctx.beginPath();
+        ctx.moveTo(rand() * W, rand() * H);
+        ctx.lineTo(rand() * W, rand() * H);
+        ctx.stroke();
+      }
+    }
+  }
+
+  const entry = loadImage(src);
+  if (entry.ready) {
+    paint(entry.img);
+  } else {
+    paint(null);
+    entry.promise.then((img) => paint(img));
+  }
+}
+
 function wrapText(ctx, text, maxWidth) {
   const words = text.split(/(\s+)/);
   const lines = [];

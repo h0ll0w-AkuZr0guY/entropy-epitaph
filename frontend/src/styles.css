@@ -1,14 +1,18 @@
 :root {
-  --bg: #121212;
-  --bg2: #1a1a1a;
-  --panel: #1e1e1c;
-  --text: #c8c8c0;
-  --text-dim: #7a7a70;
-  --decay: #5a5a4a;
-  --accent: #8a7a5a;
-  --danger: #a04030;
-  --line: #2a2a26;
-  --phosphor: #00ff41;
+  --bg: #100f0d;
+  --bg2: #17160f;
+  --panel: #1c1a16;
+  --panel2: #201d18;
+  --text: #d2cdbe;
+  --text-dim: #8a8372;
+  --decay: #5c564a;
+  --accent: #b89a63;
+  --accent-soft: #8a7a5a;
+  --danger: #b04a36;
+  --line: #2c281f;
+  --line2: #3a3426;
+  --phosphor: #4ad17a;
+  --glow: rgba(184, 154, 99, 0.35);
   --mono: "Courier New", "Consolas", monospace;
 }
 
@@ -22,7 +26,9 @@
 
 body {
   margin: 0;
-  background: radial-gradient(circle at 50% 0%, #1c1c1a 0%, var(--bg) 70%);
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #221f16 0%, rgba(34, 31, 22, 0) 60%),
+    radial-gradient(circle at 50% 0%, #1a1812 0%, var(--bg) 72%);
   color: var(--text);
   font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
   min-height: 100vh;
@@ -225,3 +231,65 @@ a:hover { color: var(--text); }
   .archive-row { gap: 8px; flex-wrap: wrap; }
   .ar-time { width: 100%; margin-left: 0; }
 }
+
+/* ---------- Image picker (create flow) ---------- */
+.image-picker {
+  margin: 4px 0 14px;
+  padding: 14px;
+  border: 1px dashed var(--line2);
+  background: var(--bg2);
+}
+.image-picker[hidden] { display: none; }
+.ip-hint { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 10px; }
+.ip-thumbs { display: flex; gap: 10px; flex-wrap: wrap; }
+.ip-thumb {
+  background: var(--panel); border: 1px solid var(--line);
+  padding: 4px 4px 6px; cursor: pointer; width: 92px; transition: all 0.2s;
+}
+.ip-thumb img {
+  width: 100%; height: 52px; object-fit: cover; display: block;
+  image-rendering: auto; filter: saturate(0.85) brightness(0.92);
+}
+.ip-thumb span {
+  display: block; font-size: 10px; color: var(--text-dim);
+  text-align: center; margin-top: 4px; letter-spacing: 0.5px;
+}
+.ip-thumb:hover { border-color: var(--accent-soft); }
+.ip-thumb.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.ip-thumb.on span { color: var(--text); }
+
+/* ---------- Image monument card ---------- */
+.mc-image {
+  width: 100%; height: auto; display: block;
+  image-rendering: pixelated; background: #151310;
+  border: 1px solid var(--line);
+}
+.monument-card.style-image, .monument-card[data-type="image"] { }
+
+/* ---------- Condole relief feedback ---------- */
+.monument-card.condoled {
+  box-shadow: 0 0 22px var(--glow);
+  border-color: var(--accent) !important;
+  transition: box-shadow 0.4s ease, border-color 0.4s ease;
+}
+.mc-btn.condole.done {
+  border-color: var(--accent); color: var(--accent); opacity: 1;
+}
+.condole-ripple {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at 50% 45%, var(--glow) 0%, rgba(0,0,0,0) 60%);
+  opacity: 0; animation: condole-pulse 1.4s ease-out;
+}
+@keyframes condole-pulse {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ---------- Polish: accent + borders warm up ---------- */
+.demo-btn.on { border-color: var(--phosphor); color: var(--phosphor); box-shadow: 0 0 12px rgba(74,209,122,0.25); }
+.cta { box-shadow: 0 0 0 rgba(184,154,99,0); transition: all 0.35s; }
+.cta:hover { background: var(--accent); color: var(--bg); box-shadow: 0 0 24px var(--glow); }
+.vs-card.decay { border-color: var(--accent); box-shadow: 0 0 20px rgba(184,154,99,0.06); }
+.mc-type { color: var(--text-dim); }
+.monument-card:hover { border-color: var(--line2); }

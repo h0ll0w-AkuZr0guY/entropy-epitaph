@@ -8,21 +8,25 @@ const STAGE_THRESHOLDS = [0.2, 0.45, 0.7, 0.9];
 const RATE_RANGES = {
   code: [0.005, 0.012],
   relic: [0.003, 0.01],
+  image: [0.004, 0.011],
   link: [0.008, 0.015],
   nameless: [0.004, 0.011],
 };
 const FALLBACK_EPITAPHS = {
   code: "此代码生于需求，终于遗忘。它曾运行过，这已足够。",
   relic: "有些话说出来就消失了，没说出来也一样。",
+  image: "这张图曾被看过很多遍。像素正在忘记它自己。",
   link: "这个地址曾经指向某处。现在它指向虚空。",
   nameless: null,
 };
 const FINAL_EPITAPHS = {
   code: "代码停了，风仍在运行。",
   relic: "终于，归于寂静。",
+  image: "最后一个像素也熄灭了。",
   link: "地址归零，来处不可考。",
   nameless: "沉默回到沉默。",
 };
+const CONTENT_TYPES = new Set(["css", "canvas", "ascii"]);
 
 function error(message, status) {
   const value = new Error(message);
@@ -77,7 +81,7 @@ function corruptContent(text, stage, seed) {
 }
 
 function publicFragment(item) {
-  if (item.type === "nameless") return null;
+  if (item.type === "nameless" || item.type === "image") return null;
   const source = (item.current_content || "").slice(0, 120);
   if (!source) return null;
   const minimumMask = Math.max(0.25, item.entropy_score);
@@ -297,10 +301,15 @@ export function createStaticApi(options = {}) {
     const now = isoNow(clock);
     const type = payload.type;
     if (!RATE_RANGES[type]) throw error("未知的墓碑类型", 422);
-    const style = payload.visual_style === "random"
-      ? ["css", "canvas", "ascii"][randomInt(3)]
-      : payload.visual_style;
-    if (!["css", "canvas", "ascii"].includes(style)) throw error("未知的视觉风格", 422);
+
+    const isImage = type === "image";
+    // Image monuments are always canvas-rendered; the picture is the medium.
+    const style = isImage
+      ? "canvas"
+      : payload.visual_style === "random"
+        ? ["css", "canvas", "ascii"][randomInt(3)]
+        : payload.visual_style;
+    if (!isImage && !CONTENT_TYPES.has(style)) throw error("未知的视觉风格", 422);
 
     const seed = randomInt(1000000);
     const content = type === "nameless" ? null : payload.content || null;
@@ -314,6 +323,8 @@ export function createStaticApi(options = {}) {
       title: payload.title || null,
       original_content: content,
       current_content: content,
+      image_src: isImage ? (payload.image_src || null) : null,
+      image_key: isImage ? (payload.image_key || null) : null,
       epitaph: type === "nameless" ? null : FALLBACK_EPITAPHS[type],
       whisper: type === "nameless" ? "此处曾有人驻足。" : null,
       entropy_score: 0,
@@ -376,6 +387,7 @@ export function createStaticApi(options = {}) {
         id: item.id,
         type: item.type,
         current_content: publicFragment(item),
+        image_src: item.type === "image" ? item.image_src : null,
         whisper: item.whisper,
         epitaph: item.epitaph,
         entropy_score: item.entropy_score,
