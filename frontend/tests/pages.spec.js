@@ -12,12 +12,12 @@ test("static Pages showcase works without a backend", async ({ page }) => {
     if (message.type() === "error") consoleErrors.push(message.text());
   });
 
-  await page.goto("/#/");
+  await page.goto("./#/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await expect(page.locator(".slogan-zh")).toContainText("万物终将风化");
 
-  await page.goto("/#/graveyard");
+  await page.goto("./#/graveyard");
   await expect(page.locator("#showcase-summary")).toContainText("共 120 块碑");
   await expect(page.locator(".monument-card")).toHaveCount(36);
 
@@ -35,11 +35,11 @@ test("static Pages showcase works without a backend", async ({ page }) => {
   await page.reload();
   await expect(page.locator("#showcase-summary")).toContainText("共 121 块碑");
 
-  await page.goto("/#/public");
+  await page.goto("./#/public");
   await expect(page.locator("#public-summary")).toContainText("75 块匿名碑");
   await expect(page.locator(".monument-card")).toHaveCount(36);
 
-  await page.goto("/#/archive");
+  await page.goto("./#/archive");
   await expect(page.locator(".archive-row").first()).toBeVisible();
   expect(await page.locator(".archive-row").count()).toBeGreaterThan(0);
 

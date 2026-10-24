@@ -10,7 +10,7 @@
 | Fixture 结构与哈希校验 | 通过 |
 | 后端 Pytest | **13 passed** |
 | 前端 Vitest | **9 passed** |
-| Playwright 静态站浏览器冒烟 | **1 passed** |
+| Playwright 静态站浏览器冒烟 | **本地 1 passed + 已部署 Pages 1 passed** |
 | Pages 子路径生产构建 | 通过 |
 | npm dependency audit | **0 vulnerabilities** |
 | FastAPI 隔离库联调 | 通过 |
@@ -70,6 +70,10 @@ Playwright 使用本机 Microsoft Edge 执行以下真实页面路径：
 - JS fixture 地址为 `/entropy-epitaph/mock/showcase.v1.json`；
 - bundle 不包含 `127.0.0.1:8000`；
 - `.nojekyll`、favicon 和 fixture 均进入 `dist`。
+
+## 已部署站点验证
+
+对 `https://h0ll0w-akuzr0guy.github.io/entropy-epitaph/` 再次执行同一套 Playwright 全链路，结果 **1 passed**。在线 fixture 返回 `count: 120`，证明 Pages 发布产物和演示数据均已生效。
 
 ## 已知环境限制
 
