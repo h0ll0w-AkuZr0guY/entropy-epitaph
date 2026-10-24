@@ -1,0 +1,26 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Data / local DB
+data/*.db
+data/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Env secrets
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Browser tests
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/

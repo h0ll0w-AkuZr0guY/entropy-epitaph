@@ -1,0 +1,20 @@
+{
+  "name": "entropy-epitaph-frontend",
+  "version": "0.1.0",
+  "description": "熵逝碑林 — a digital graveyard where everything decays.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:pages": "vite build --mode pages",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "check": "npm run test && npm run build:pages",
+    "preview": "vite preview --host"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "vite": "^6.4.5",
+    "vitest": "^4.1.12"
+  }
+}
